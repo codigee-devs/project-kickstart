@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rate items</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1c2024; --muted: #5b6470; --line: #e4e7eb;
+    --bad: #d92d20; --weak: #e8590c; --good: #2f9e44; --great: #2f6feb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d0f12; --card: #171b21; --ink: #eef0f3; --muted: #9aa4b2; --line: #2a3038; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 1; background: var(--card); border-bottom: 1px solid var(--line); padding: 12px 16px;
+           display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  header h1 { margin: 0; font-size: 20px; flex: 1 1 auto; }
+  #progress { color: var(--muted); font-size: 14px; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  .item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .item h2 { margin: 0 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .item p { margin: 0 0 12px; font-size: 18px; }
+  .item audio, .item img, .item video { max-width: 100%; display: block; margin: 0 0 12px; border-radius: 8px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .buttons button { min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent;
+                    color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  .buttons button[aria-pressed="true"][data-score="1"] { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .buttons button[aria-pressed="true"][data-score="2"] { background: var(--weak); border-color: var(--weak); color: #fff; }
+  .buttons button[aria-pressed="true"][data-score="3"] { background: var(--good); border-color: var(--good); color: #fff; }
+  .buttons button[aria-pressed="true"][data-score="4"] { background: var(--great); border-color: var(--great); color: #fff; }
+  textarea { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit;
+             background: transparent; color: var(--ink); }
+  .copy { min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 0; background: var(--ink); color: var(--bg);
+          font: inherit; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rate items</h1>
+  <span id="progress" aria-live="polite"></span>
+  <button class="copy" id="copy" type="button">Copy ratings</button>
+</header>
+<main id="list"></main>
+
+<script>
+(function () {
+  "use strict";
+
+  // Replace with your items. `media` is optional: {type: "audio" | "img" | "video", src: "..."}.
+  var ITEMS = [
+    { id: "q-001", text: "Which of you would survive longest without a phone?" },
+    { id: "q-002", text: "Who in this room has the most unread messages right now?" },
+    { id: "vo-001", text: "Narrator line 1", media: { type: "audio", src: "vo-001.mp3" } }
+  ];
+  var LABELS = { 1: "bad", 2: "weak", 3: "good", 4: "great" };
+  var STORAGE_KEY = "ratings:" + location.pathname;
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function save(state) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode: ratings stay in memory */ }
+  }
+
+  var state = load();
+  var list = document.getElementById("list");
+  var progress = document.getElementById("progress");
+
+  function updateProgress() {
+    var rated = ITEMS.filter(function (it) { return state[it.id] && state[it.id].score; }).length;
+    progress.textContent = rated + " / " + ITEMS.length + " rated";
+  }
+
+  ITEMS.forEach(function (it) {
+    var entry = state[it.id] || {};
+    var card = document.createElement("section");
+    card.className = "item";
+
+    var h = document.createElement("h2"); h.textContent = it.id; card.appendChild(h);
+    var p = document.createElement("p"); p.textContent = it.text; card.appendChild(p);
+
+    if (it.media) {
+      var m = document.createElement(it.media.type);
+      m.src = it.media.src;
+      if (it.media.type !== "img") m.controls = true; else m.alt = it.text;
+      card.appendChild(m);
+    }
+
+    var buttons = document.createElement("div");
+    buttons.className = "buttons";
+    buttons.setAttribute("role", "group");
+    buttons.setAttribute("aria-label", "Rating for " + it.id);
+    Object.keys(LABELS).forEach(function (score) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = LABELS[score];
+      b.dataset.score = score;
+      b.setAttribute("aria-pressed", String(entry.score === Number(score)));
+      b.addEventListener("click", function () {
+        state[it.id] = state[it.id] || {};
+        state[it.id].score = Number(score);
+        save(state);
+        buttons.querySelectorAll("button").forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+        updateProgress();
+      });
+      buttons.appendChild(b);
+    });
+    card.appendChild(buttons);
+
+    var note = document.createElement("textarea");
+    note.placeholder = "Comment (optional)";
+    note.setAttribute("aria-label", "Comment for " + it.id);
+    note.value = entry.note || "";
+    note.addEventListener("input", function () {
+      state[it.id] = state[it.id] || {};
+      state[it.id].note = note.value;
+      save(state);
+    });
+    card.appendChild(note);
+
+    list.appendChild(card);
+  });
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var lines = ITEMS.map(function (it) {
+      var e = state[it.id] || {};
+      return it.id + "\t" + (e.score ? LABELS[e.score] : "-") + "\t" + (e.note || "").replace(/\s+/g, " ");
+    });
+    var text = "id\trating\tcomment\n" + lines.join("\n");
+    var button = this;
+    function done() { button.textContent = "Copied"; setTimeout(function () { button.textContent = "Copy ratings"; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { window.prompt("Copy:", text); });
+    } else {
+      window.prompt("Copy:", text);
+    }
+  });
+
+  updateProgress();
+})();
+</script>
+</body>
+</html>

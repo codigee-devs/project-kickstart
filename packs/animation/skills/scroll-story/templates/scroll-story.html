@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll story template</title>
+<script>
+  // Decide before first paint, so reduced-motion users never see a half-built animation.
+  try { if (matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("reduce"); } catch (e) {}
+  document.documentElement.classList.add("js");
+</script>
+<style>
+  :root {
+    --bg: #0d0f12; --ink: #eef0f3; --muted: #9aa4b2; --accent: #fbff5c;
+    --phone-w: min(300px, 70vw); --radius: 36px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 18px/1.5 system-ui, sans-serif; }
+  .intro, .outro { min-height: 70vh; display: grid; place-items: center; padding: 16px; text-align: center; }
+
+  /* Static layout: used without JS and with reduced motion. */
+  .story { padding: 0 16px; }
+  .story__step { display: grid; gap: 16px; justify-items: center; margin: 0 auto 64px; max-width: 900px; }
+  .phone { width: var(--phone-w); aspect-ratio: 9 / 19.5; border-radius: var(--radius); overflow: hidden;
+           border: 10px solid #1d2127; background: #000; position: relative; }
+  .phone__screen { position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px; font-weight: 700; }
+  .caption { max-width: 32ch; text-align: center; }
+  .caption b { color: var(--accent); }
+
+  /* Animated layout: only when JS runs and motion is allowed. */
+  .js:not(.reduce) .story { position: relative; padding: 0; }
+  .js:not(.reduce) .story__stage { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; overflow: hidden; }
+  .js:not(.reduce) .story__step { display: none; }
+  .story__stage { display: none; }
+  .stage__phone .phone__screen { will-change: transform; }
+  .stage__caps { position: absolute; left: 50%; bottom: 8vh; transform: translateX(-50%); width: min(90vw, 520px); height: 4.5em; }
+  .stage__cap { position: absolute; inset: 0; opacity: 0; text-align: center; }
+  @media (min-width: 900px) {
+    .stage__caps { left: auto; right: 8vw; bottom: auto; top: 50%; transform: translateY(-50%); width: 360px; }
+    .stage__cap { text-align: left; }
+  }
+</style>
+</head>
+<body>
+  <section class="intro"><h1>Scroll down</h1></section>
+
+  <section class="story" data-story>
+    <!-- Source of truth: one element per step. The script builds the animated stage from these. -->
+    <div class="story__step" data-step>
+      <div class="phone"><div class="phone__screen" style="background:#2f6feb">Screen 1</div></div>
+      <p class="caption"><b>Step 1.</b> What the user sees first.</p>
+    </div>
+    <div class="story__step" data-step>
+      <div class="phone"><div class="phone__screen" style="background:#7e00ff">Screen 2</div></div>
+      <p class="caption"><b>Step 2.</b> The key action, one sentence.</p>
+    </div>
+    <div class="story__step" data-step>
+      <div class="phone"><div class="phone__screen" style="background:#e8590c">Screen 3</div></div>
+      <p class="caption"><b>Step 3.</b> The result it produces.</p>
+    </div>
+    <div class="story__stage" data-stage aria-hidden="true">
+      <div class="phone stage__phone" data-phone></div>
+      <div class="stage__caps" data-caps></div>
+    </div>
+  </section>
+
+  <section class="outro"><h2>The story hands over to the page here.</h2></section>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  if (root.classList.contains("reduce")) return;
+
+  var STEP_VH = 0.72;       // scroll length of one step, in viewport heights
+  var TAIL_VH = 0.6;        // extra scroll after the last step before the stage unpins
+  var WIPE_LEAD = 0.5;      // the wipe into step k starts this far before s = k
+  var WIPE_SPAN = 0.5;      // and lasts this long, so it lands exactly on s = k (keep SPAN <= LEAD)
+  var CAP_HOLD = 0.3;       // a caption stays fully visible within this distance of its step
+  var CAP_FADE = 0.15;      // then fades out over this distance; HOLD + FADE <= 0.5 keeps captions from overlapping
+  var SMOOTH = 0.18;        // per-frame catch-up of the drawn position (cosmetic only)
+  var SETTLE_EPS = 0.0005;  // stop the frame loop when this close
+
+  var story = document.querySelector("[data-story]");
+  var steps = Array.prototype.slice.call(story.querySelectorAll("[data-step]"));
+  var phone = story.querySelector("[data-phone]");
+  var capsBox = story.querySelector("[data-caps]");
+  var N = steps.length;
+
+  var layers = steps.map(function (step) {
+    var screen = step.querySelector(".phone__screen").cloneNode(true);
+    phone.appendChild(screen);
+    return screen;
+  });
+  var caps = steps.map(function (step) {
+    var cap = document.createElement("p");
+    cap.className = "stage__cap";
+    cap.innerHTML = step.querySelector(".caption").innerHTML;
+    capsBox.appendChild(cap);
+    return cap;
+  });
+  story.setAttribute("aria-label", "Story in " + N + " steps");
+
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+  var sectionTop = 0, stepPx = 1, target = 0, drawn = 0, ticking = false;
+
+  function measure() {
+    var vh = window.innerHeight;
+    stepPx = STEP_VH * vh;
+    story.style.height = ((N - 1) * STEP_VH + 1 + TAIL_VH) * vh + "px";
+    sectionTop = story.getBoundingClientRect().top + window.scrollY;
+  }
+
+  // Pure: every visual state is a function of the story position s.
+  function render(s) {
+    layers.forEach(function (layer, k) {
+      var wipe = k === 0 ? 1 : clamp((s - (k - WIPE_LEAD)) / WIPE_SPAN, 0, 1);
+      layer.style.transform = "translateY(" + ((1 - easeInOut(wipe)) * 100) + "%)";
+    });
+    caps.forEach(function (cap, k) {
+      var d = Math.abs(s - k);
+      var o = clamp(1 - (d - CAP_HOLD) / CAP_FADE, 0, 1);
+      cap.style.opacity = o;
+      cap.style.transform = "translateY(" + ((s - k) * -12) + "px)";
+    });
+  }
+
+  function frame() {
+    drawn += (target - drawn) * SMOOTH;
+    if (Math.abs(target - drawn) < SETTLE_EPS) drawn = target;
+    render(drawn);
+    if (drawn !== target) requestAnimationFrame(frame); else ticking = false;
+  }
+
+  function onScroll() {
+    target = clamp((window.scrollY - sectionTop) / stepPx, 0, N - 1);
+    if (!ticking) { ticking = true; requestAnimationFrame(frame); }
+  }
+
+  measure(); onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", function () { measure(); onScroll(); });
+})();
+</script>
+</body>
+</html>

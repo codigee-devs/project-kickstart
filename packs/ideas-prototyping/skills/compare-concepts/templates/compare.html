@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compare concepts</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1c2024; --muted: #5b6470; --line: #e4e7eb;
+    --accent: #2f6feb; --tag: #8a6d00;
+    --preview-w: 1440; --preview-h: 900;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d0f12; --card: #171b21; --ink: #eef0f3; --muted: #9aa4b2; --line: #2a3038; --accent: #6ea8ff; --tag: #fbff5c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 28px 16px 8px; max-width: 1400px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: clamp(24px, 3vw, 36px); }
+  header p { margin: 0; color: var(--muted); max-width: 75ch; }
+  .grid { display: grid; gap: 20px; padding: 20px 16px 48px; max-width: 1400px; margin: 0 auto;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; }
+  .frame { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #000; border-bottom: 1px solid var(--line); }
+  .frame iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; }
+  .body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .tag { color: var(--tag); font-weight: 800; letter-spacing: .08em; font-size: 13px; text-transform: uppercase; }
+  h2 { margin: 0; font-size: 22px; }
+  h3 { margin: 8px 0 2px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  ul { margin: 0; padding-left: 18px; }
+  li { margin: 3px 0; }
+  .note { color: var(--muted); font-size: 14px; }
+  .open { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px;
+          border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
+  .open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Case study page: 3 concepts</h1>
+  <p>Same content and order in every concept, so you compare only the layout and the effect. The preview is the first screen (you can scroll inside it). The full effect needs the page opened in a tab. Pick one, or say what to combine.</p>
+</header>
+
+<main class="grid">
+  <!-- Copy one <article> per concept. Keep names descriptive, notes honest. -->
+  <article class="card">
+    <div class="frame"><iframe src="concept-a/index.html" title="Concept A preview" loading="lazy"></iframe></div>
+    <div class="body">
+      <span class="tag">Concept A</span>
+      <h2>Pinned phone</h2>
+      <p>One large phone stays in the middle; scrolling changes the recording on its screen, step by step.</p>
+      <h3>Wow effect</h3>
+      <ul>
+        <li>Each new recording wipes up over the previous one</li>
+        <li>Captions alternate left and right; the phone turns slightly toward them</li>
+      </ul>
+      <h3>Notes</h3>
+      <ul class="note">
+        <li>About 7 screens of scroll</li>
+        <li>Simplest to roll out to every page</li>
+      </ul>
+      <a class="open" href="concept-a/index.html" target="_blank" rel="noopener">Open A</a>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="frame"><iframe src="concept-b/index.html" title="Concept B preview" loading="lazy"></iframe></div>
+    <div class="body">
+      <span class="tag">Concept B</span>
+      <h2>Film strip</h2>
+      <p>A horizontal strip of phones moves sideways as you scroll; the middle one is sharp and playing.</p>
+      <h3>Wow effect</h3>
+      <ul><li>Full-screen interlude with a counter</li></ul>
+      <h3>Notes</h3>
+      <ul class="note"><li>Most cinematic, but long</li></ul>
+      <a class="open" href="concept-b/index.html" target="_blank" rel="noopener">Open B</a>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="frame"><iframe src="concept-c/index.html" title="Concept C preview" loading="lazy"></iframe></div>
+    <div class="body">
+      <span class="tag">Concept C</span>
+      <h2>Wall to phone</h2>
+      <p>Starts as a tilted wall of every screen; the camera dives into one tile, which becomes the phone.</p>
+      <h3>Wow effect</h3>
+      <ul><li>The wall straightens and one tile lands exactly in the phone frame</li></ul>
+      <h3>Notes</h3>
+      <ul class="note"><li>Strongest entrance; needs many screens per project</li></ul>
+      <a class="open" href="concept-c/index.html" target="_blank" rel="noopener">Open C</a>
+    </div>
+  </article>
+</main>
+
+<script>
+  // Render each preview at desktop size and scale it to the card, so the owner sees the real page.
+  (function () {
+    var css = getComputedStyle(document.documentElement);
+    var PREVIEW_W = parseInt(css.getPropertyValue("--preview-w"), 10);
+    var PREVIEW_H = parseInt(css.getPropertyValue("--preview-h"), 10);
+    function fit() {
+      document.querySelectorAll(".frame").forEach(function (frame) {
+        var iframe = frame.querySelector("iframe");
+        iframe.style.width = PREVIEW_W + "px";
+        iframe.style.height = PREVIEW_H + "px";
+        iframe.style.transform = "scale(" + (frame.clientWidth / PREVIEW_W) + ")";
+      });
+    }
+    addEventListener("resize", fit);
+    fit();
+  })();
+</script>
+</body>
+</html>
