@@ -5,7 +5,7 @@ description: Brief, produce and check ad creatives (short video, UGC-style clips
 
 # Ad creatives that earn trust
 
-Audiences read a cheap-looking ad as a cheap product. Research on large forum threads about AI-made ads (thousands of weighted comments) ranked the reasons people reject them: "they save money, so the product is cheap too" first, then visible artifacts, uncanny voices, generic "AI cartoon" style, and the same ad running for months. Design against that list.
+Audiences read a cheap-looking ad as a cheap product. A working heuristic from reading audience reactions to AI-made ads (experience, not a measured study) puts the reasons people reject them in this order: "they save money, so the product is cheap too" first, then visible artifacts, uncanny voices, generic "AI cartoon" style, and the same ad running for months. Design against that list.
 
 ## 1. Brief (no spending yet)
 
@@ -46,7 +46,7 @@ Start the brief with one real audience quote from your research, as a reminder o
 ## 5. Check before handoff
 
 - Watch at phone size with sound off: can a stranger say what it is and what to do next?
-- Captions: rendered diacritics correct, inside safe zones (critical text not in the bottom ~12% or along the right edge in 9:16).
+- Captions: rendered diacritics correct, inside the 9:16 safe zone: keep the top 14%, the bottom 35% and 11% on each side free of critical text (on 1080x1920: 269 px top, 672 px bottom, 120 px each side), and in the lower 56% of the frame also keep the right 28% free for TikTok's action buttons (300 px from the right edge over the bottom 1080 px). These are the stricter values of Meta Reels and Stories ads (14% top, 35% bottom, 6% sides: https://www.facebook.com/business/ads-guide/update/video/instagram-reels) and the TikTok in-feed safe zone template (drawn on 720x1280: 160 px top, 440 px bottom, 80 px sides, plus a 120 px right column over the bottom 720 px: https://ads.tiktok.com/help/article/tiktok-auction-in-feed-ads).
 - Lengths, loudness and frames checked (see the `video-editing-qa` skill in the video pack).
 
 ## Output
